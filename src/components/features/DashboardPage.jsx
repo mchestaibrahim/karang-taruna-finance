@@ -2,7 +2,6 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  LabelList,
   Legend,
   ResponsiveContainer,
   Tooltip,
@@ -10,7 +9,7 @@ import {
   YAxis,
 } from 'recharts'
 import { ApprovalBadge, Badge, Empty, Progress } from '../ui'
-import { compactRupiah, rupiah } from '../../app/formatters'
+import { rupiah } from '../../app/formatters'
 
 export function DashboardPage({
   totalMasuk,
@@ -57,10 +56,18 @@ export function DashboardPage({
         {chartData.length === 0 ? <Empty>Belum ada data untuk grafik.</Empty> : (
           <div className="chart-wrap">
             <ResponsiveContainer width="100%" height={320}>
-              <BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="tanggal" /><YAxis /><Tooltip formatter={(value) => rupiah(value)} /><Legend />
-                <Bar dataKey="masuk" name="Uang Masuk" fill="#6D28D9" radius={[6, 6, 0, 0]} animationDuration={700}><LabelList dataKey="masuk" position="top" formatter={compactRupiah} /></Bar>
-                <Bar dataKey="bati" name="Bati KT" fill="#4C1D95" radius={[6, 6, 0, 0]} animationDuration={700}><LabelList dataKey="bati" position="top" formatter={compactRupiah} /></Bar>
-                <Bar dataKey="keluar" name="Pengeluaran" fill="#E5484D" radius={[6, 6, 0, 0]} animationDuration={700}><LabelList dataKey="keluar" position="top" formatter={compactRupiah} /></Bar>
+              <BarChart data={chartData}>
+                <CartesianGrid stroke="#e8edf4" strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="tanggal" axisLine={false} tickLine={false} tick={{ fill: '#64708a', fontSize: 12 }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64708a', fontSize: 12 }} />
+                <Tooltip
+                  formatter={(value) => rupiah(value)}
+                  contentStyle={{ border: '1px solid #e4e8ef', borderRadius: 8, boxShadow: '0 6px 18px rgba(23, 32, 51, 0.12)' }}
+                />
+                <Legend wrapperStyle={{ color: '#64708a', fontSize: 12 }} />
+                <Bar dataKey="masuk" name="Uang Masuk" fill="#2563eb" radius={[4, 4, 0, 0]} animationDuration={700} />
+                <Bar dataKey="bati" name="Bati KT" fill="#12a594" radius={[4, 4, 0, 0]} animationDuration={700} />
+                <Bar dataKey="keluar" name="Pengeluaran" fill="#e5484d" radius={[4, 4, 0, 0]} animationDuration={700} />
               </BarChart>
             </ResponsiveContainer>
           </div>
