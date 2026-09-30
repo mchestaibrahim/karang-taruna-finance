@@ -2,7 +2,7 @@ import { Badge, Empty, FormError, Progress } from '../ui'
 import { rupiah } from '../../app/formatters'
 
 export function AnggotaPage({ data }) {
-  const { canEdit, addMember, newName, setNewName, newTarget, setNewTarget, formError, editingId, search, setSearch, filteredStats, members, editName, setEditName, editTarget, setEditTarget, saveEdit, toggleActive, startEdit, setEditingId, setFormError } = data
+  const { canEdit, canReport, onReport, addMember, newName, setNewName, newTarget, setNewTarget, formError, editingId, search, setSearch, filteredStats, members, editName, setEditName, editTarget, setEditTarget, saveEdit, toggleActive, startEdit, setEditingId, setFormError } = data
 
   return (
 <>
@@ -80,7 +80,7 @@ export function AnggotaPage({ data }) {
                 <th className="num">Sisa</th>
                 <th>Progress</th>
                 <th>Status</th>
-                {canEdit && <th />}
+                {(canEdit || canReport) && <th />}
               </tr>
             </thead>
 
@@ -135,10 +135,10 @@ export function AnggotaPage({ data }) {
                         <Badge tone="muted">Nonaktif</Badge>
                       )}
                     </td>
-                    {canEdit && (
+                    {(canEdit || canReport) && (
                       <td>
                         <div className="actions">
-                          {editing ? (
+                          {canReport ? <button type="button" className="btn btn-ghost btn-sm" aria-label={`Laporkan data ${m.name}`} onClick={() => onReport({ table: 'members', id: m.id, label: `Anggota · ${m.name} · target ${rupiah(m.target)}` })}>Laporkan</button> : editing ? (
                             <>
                               <button
                                 type="button"

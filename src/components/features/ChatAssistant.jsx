@@ -79,12 +79,15 @@ export function ChatAssistant({ chat, permissions }) {
             }}
           >
             {canEdit && (
-              <label className="ai-chat-attach" title="Lampirkan foto nota/bukti">
+              <label className="ai-chat-attach" title="Lampirkan foto nota/bukti (maksimal 2 MB)">
                 📎
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => setChatImage(e.target.files?.[0] || null)}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null
+                    if (!setChatImage(file)) e.target.value = ''
+                  }}
                 />
               </label>
             )}

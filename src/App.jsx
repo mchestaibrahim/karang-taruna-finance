@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './dashboard.css'
 import bg from './bg.jpg'
 import { AuthShell, LoginScreen, NoRoleScreen } from './components/auth'
@@ -13,17 +13,34 @@ import { NyicilPage } from './components/features/NyicilPage'
 import { DanusanPage } from './components/features/DanusanPage'
 import { PemasukanPage } from './components/features/PemasukanPage'
 import { PengeluaranPage } from './components/features/PengeluaranPage'
+import { DataReportsPage } from './components/features/DataReportsPage'
 import { Sidebar } from './components/layout/Sidebar'
 import { Topbar } from './components/layout/Topbar'
 import { useAuth } from './hooks/useAuth'
 import { useFinanceController } from './hooks/useFinanceController'
 import { rupiah } from './app/formatters'
+import { DataReportDialog } from './components/DataReportDialog'
+import { GuideDialog } from './components/GuideDialog'
 
 /* ---------- Aplikasi ---------- */
 
 function App() {
   const { session, authReady, role, roleError, userId, logout } = useAuth()
   const [page, setPage] = useState('dashboard')
+  const [reportTarget, setReportTarget] = useState(null)
+  const [guideOpen, setGuideOpen] = useState(false)
+
+  useEffect(() => {
+    if (!userId || !role) return
+    const timer = window.setTimeout(() => {
+      try {
+        if (localStorage.getItem(`kt-finance-guide:${userId}`) !== 'done') setGuideOpen(true)
+      } catch {
+        setGuideOpen(true)
+      }
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [userId, role])
   const {
     auditRows,
     auditLoading,
@@ -33,6 +50,12 @@ function App() {
     saving,
     canEdit,
     canApprove,
+    dataReports,
+    reportError,
+    reportBusy,
+    reportBusyId,
+    submitDataReport,
+    reviewDataReport,
     pendingExpenses,
     totalMasuk,
     totalKeluar,
@@ -227,7 +250,7 @@ function App() {
     <div className="app" style={{ '--bg-image': `url(${bg})` }}>
       <Sidebar
         data={{ page, session, role, pendingExpenses, canApprove }}
-        actions={{ goTo, handleLogout }}
+        actions={{ goTo, handleLogout, openTutorial: () => setGuideOpen(true) }}
       />
 
       <main className="main">
@@ -285,9 +308,10 @@ function App() {
         {page === 'nyicil' && <NyicilPage data={{ canEdit, addPayment, nyicilMember, setNyicilMember, activeMembers, paymentAmount, setPaymentAmount, nyicilProof, setNyicilProof, saving, nyicilTarget, formError, payments, nameOfMember, openProof, askVoid }} />}
         {page === 'pemasukan' && <PemasukanPage data={{ canEdit, saveOtherIncome, incomeDate, setIncomeDate, incomeType, setIncomeType, incomeSource, setIncomeSource, incomeDesc, setIncomeDesc, incomeAmount, setIncomeAmount, carwashLabel, setCarwashLabel, carwashAmount, setCarwashAmount, activeMembers, carwashMembers, toggleCarwashMember, incomeProof, setIncomeProof, saving, formError, otherIncome, carwashAllocationsFor, nameOfMember, openProof, askVoid }} />} 
         {page === 'pengeluaran' && <PengeluaranPage data={{ canEdit, saveExpense, expDate, setExpDate, expCategory, setExpCategory, expDesc, setExpDesc, expAmount, setExpAmount, expProof, setExpProof, handleAiScan, aiScanBusy, aiScanError, aiScanResult, setAiScanResult, applyAiScanResult, discardAiScanResult, possibleExpenseDuplicate, saving, formError, canApprove, pendingExpenses, approveBusyId, approveExpense, askReject, expenses, openProof, askVoid }} />}
-        {page === 'anggota' && <AnggotaPage data={{ canEdit, addMember, newName, setNewName, newTarget, setNewTarget, formError, editingId, search, setSearch, filteredStats, members, editName, setEditName, editTarget, setEditTarget, saveEdit, toggleActive, startEdit, setEditingId, setFormError }} />}
-        {page === 'transaksi' && <TransaksiPage data={{ txSearch, setTxSearch, txMember, setTxMember, members, txType, setTxType, txStatus, setTxStatus, txSort, setTxSort, exportCsv, filteredTx, allTransactions, filteredMasuk, filteredKeluar, canEdit, askVoid }} />}
+        {page === 'anggota' && <AnggotaPage data={{ canEdit, canReport: role === 'member', onReport: setReportTarget, addMember, newName, setNewName, newTarget, setNewTarget, formError, editingId, search, setSearch, filteredStats, members, editName, setEditName, editTarget, setEditTarget, saveEdit, toggleActive, startEdit, setEditingId, setFormError }} />}
+        {page === 'transaksi' && <TransaksiPage data={{ txSearch, setTxSearch, txMember, setTxMember, members, txType, setTxType, txStatus, setTxStatus, txSort, setTxSort, exportCsv, filteredTx, allTransactions, filteredMasuk, filteredKeluar, canEdit, canReport: role === 'member', askVoid, onReport: setReportTarget }} />}
         {page === 'laporan' && <LaporanPage data={{ reportMonth, setReportMonth, copyReportSummary, reportMasuk, reportNyicilCount, reportDanusanCount, reportKeluar, reportBati, reportSaldo, reportByCategory, belumLunas, vendorBelumDisetor }} />}
+        {page === 'data-reports' && (role === 'member' || canEdit) && <DataReportsPage reports={dataReports} canEdit={canEdit} loading={loading} error={reportError} busyId={reportBusyId} onReview={reviewDataReport} />}
         {page === 'log' && <LogPage data={{ auditError, auditLoading, filteredAuditRows, auditRows, logSearch, setLogSearch, nameOfMember }} />}
       </main>
 
@@ -301,6 +325,16 @@ function App() {
           onCancel={closeVoid}
           onSubmit={confirmVoid}
         />
+      )}
+
+      {reportTarget && role === 'member' && (
+        <DataReportDialog target={reportTarget} busy={reportBusy} error={reportError} onClose={() => setReportTarget(null)} onSubmit={async (report) => { if (await submitDataReport(report)) setReportTarget(null) }} />
+      )}
+      {guideOpen && (
+        <GuideDialog role={role} onClose={() => {
+          try { localStorage.setItem(`kt-finance-guide:${userId}`, 'done') } catch { /* storage may be disabled */ }
+          setGuideOpen(false)
+        }} />
       )}
 
       {rejectTarget && (

@@ -23,11 +23,16 @@ export function NotificationPanel({ data, actions }) {
         <div className="notif-panel">
           <div className="notif-panel-head">
             <h4>Notifikasi</h4>
-            {notifications.length > 0 && (
-              <button type="button" className="notif-mark-read" onClick={markAllNotifsRead}>
-                Tandai semua sudah dibaca
+            <div className="notif-panel-actions">
+              {notifications.length > 0 && (
+                <button type="button" className="notif-mark-read" onClick={markAllNotifsRead}>
+                  Tandai semua sudah dibaca
+                </button>
+              )}
+              <button type="button" className="notif-close" aria-label="Tutup notifikasi" onClick={() => setNotifOpen(false)}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
               </button>
-            )}
+            </div>
           </div>
           <div className="notif-list">
             {notifications.length === 0 ? (

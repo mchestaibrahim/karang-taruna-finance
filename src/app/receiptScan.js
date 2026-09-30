@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabaseClient'
 import { fileToDataUrl } from './helpers'
+import { MAX_PROOF_SIZE } from './config'
 
 // AI Receipt Scanner: mengirim foto nota ke Supabase Edge Function
 // "scan-receipt" yang membaca tanggal, vendor, nominal, dan kategori dari
@@ -8,6 +9,9 @@ import { fileToDataUrl } from './helpers'
 // edge-nya sendiri perlu di-deploy terpisah di proyek Supabase (lihat
 // catatan di respons chat untuk contoh implementasinya).
 export async function scanReceiptWithAI(file, categories) {
+  if (file.size > MAX_PROOF_SIZE) {
+    throw new Error('Ukuran file nota maksimal 2 MB.')
+  }
   const imageBase64 = await fileToDataUrl(file)
 
   const { data, error } = await supabase.functions.invoke('scan-receipt', {

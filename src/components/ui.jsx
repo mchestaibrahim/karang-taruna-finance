@@ -50,7 +50,7 @@ export function ProofButton({ value, openProof }) {
 export function ProofPicker({ label, file, setFile, wide }) {
   return (
     <label className={`field file-field${wide ? ' wide-field' : ''}`}>
-      <span>{label}</span>
+      <span>{label} · Maksimal 2 MB</span>
 
       <div className="file-upload">
         <input

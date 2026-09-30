@@ -6,6 +6,7 @@ import { useNotifications } from './useNotifications'
 import {
   DEFAULT_TARGET,
   EXPENSE_CATEGORIES,
+  MAX_PROOF_SIZE,
   MIN_REJECT_REASON,
   MIN_VOID_REASON,
   PRODUCTS,
@@ -38,6 +39,10 @@ export function useFinanceController({ page, setPage, role, userId, logout }) {
   const [loadError, setLoadError] = useState('')
   const [loadErrorAt, setLoadErrorAt] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [dataReports, setDataReports] = useState([])
+  const [reportError, setReportError] = useState('')
+  const [reportBusy, setReportBusy] = useState(false)
+  const [reportBusyId, setReportBusyId] = useState(null)
 
   // Form anggota
   const [newName, setNewName] = useState('')
@@ -114,6 +119,22 @@ const [logSearch, setLogSearch] = useState('')
   // bisa menyetujui/menolak pengeluaran yang dicatat bendahara. Ini yang
   // mencegah satu orang pegang kendali penuh atas uang kas.
   const canApprove = role === 'pengurus'
+
+  useEffect(() => {
+    if (!userId || !role) return undefined
+
+    let cancelled = false
+    supabase.from('data_reports').select('*').order('created_at', { ascending: false }).then(({ data, error }) => {
+      if (cancelled) return
+      if (error) {
+        setReportError('Fitur laporan belum tersedia. Jalankan migration data_reports di Supabase.')
+        return
+      }
+      setReportError('')
+      setDataReports(data || [])
+    })
+    return () => { cancelled = true }
+  }, [userId, role])
 
   /* ----- Muat data (hanya kalau sudah login dan punya peran) ----- */
 
@@ -195,6 +216,12 @@ setLoading(false)
   }, [toast])
 
   function goTo(id) {
+    const memberPages = ['dashboard', 'anggota', 'transaksi', 'laporan', 'data-reports']
+    if ((role === 'member' && !memberPages.includes(id)) || (role === 'pengurus' && id === 'data-reports')) {
+      setPage('dashboard')
+      setToast('Halaman tersebut tidak tersedia untuk peran akun ini.')
+      return
+    }
     setPage(id)
     setFormError('')
     setEditingId(null)
@@ -203,6 +230,56 @@ setLoading(false)
   async function handleLogout() {
     await logout()
     setPage('dashboard')
+  }
+
+  async function submitDataReport(report) {
+    if (role !== 'member') {
+      setReportError('Hanya Member yang dapat mengirim laporan dari halaman ini.')
+      return false
+    }
+    const allowedTables = ['transactions', 'expenses', 'other_income', 'members']
+    if (!allowedTables.includes(report.target.table)) {
+      setReportError('Jenis data yang dilaporkan tidak valid.')
+      return false
+    }
+    setReportBusy(true)
+    setReportError('')
+    const { data, error } = await supabase.from('data_reports').insert({
+      reporter_id: userId,
+      record_table: report.target.table,
+      record_id: String(report.target.id),
+      record_label: report.target.label,
+      report_type: report.type,
+      description: report.description.trim(),
+      additional_note: report.additionalNote.trim() || null,
+      status: 'pending',
+    }).select().single()
+    setReportBusy(false)
+    if (error) {
+      console.error('Gagal mengirim laporan data:', error)
+      setReportError('Laporan gagal dikirim. Coba lagi setelah migration tersedia.')
+      return false
+    }
+    setDataReports((list) => [data, ...list])
+    setToast('Laporan terkirim, menunggu ditinjau Bendahara')
+    return true
+  }
+
+  async function reviewDataReport(report) {
+    if (!canEdit) return
+    setReportBusyId(report.id)
+    const reviewedAt = new Date().toISOString()
+    const { data, error } = await supabase.from('data_reports').update({
+      status: 'reviewed',
+      reviewed_at: reviewedAt,
+      reviewed_by: userId,
+    }).eq('id', report.id).eq('status', 'pending').select().single()
+    setReportBusyId(null)
+    if (error) {
+      setReportError('Status laporan gagal diperbarui.')
+      return
+    }
+    setDataReports((list) => list.map((item) => item.id === report.id ? data : item))
   }
 
   /* ----- Data turunan ----- */
@@ -616,6 +693,7 @@ const totalMasuk = totalNyicil + totalDanusan + totalOtherIncome
 
   // Upload file bukti. Mengembalikan path file, atau melempar error.
   async function uploadProof(folder, file) {
+    if (file.size > MAX_PROOF_SIZE) throw new Error('Ukuran file maksimal 2 MB.')
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-')
     const filePath = `${folder}/${crypto.randomUUID()}-${safeName}`
 
@@ -635,6 +713,7 @@ const totalMasuk = totalNyicil + totalDanusan + totalOtherIncome
   /* ----- Pembatalan ----- */
 
   function askVoid(target) {
+    if (!canEdit) return setToast('Akun ini tidak memiliki izin mengubah data.')
     setVoidTarget(target)
     setVoidReason('')
     setVoidError('')
@@ -646,6 +725,7 @@ const totalMasuk = totalNyicil + totalDanusan + totalOtherIncome
 
   async function confirmVoid(e) {
     e.preventDefault()
+    if (!canEdit) return setVoidError('Akun ini tidak memiliki izin mengubah data.')
     const reason = voidReason.trim()
 
     if (reason.length < MIN_VOID_REASON) {
@@ -786,6 +866,7 @@ const totalMasuk = totalNyicil + totalDanusan + totalOtherIncome
 
   async function addMember(e) {
     e.preventDefault()
+    if (!canEdit) return setFormError('Akun ini tidak memiliki izin mengubah data anggota.')
     const name = newName.trim()
     const target = Number(newTarget)
 
@@ -814,6 +895,7 @@ const totalMasuk = totalNyicil + totalDanusan + totalOtherIncome
   }
 
   function startEdit(member) {
+    if (!canEdit) return
     setEditingId(member.id)
     setEditName(member.name)
     setEditTarget(String(member.target))
@@ -821,6 +903,7 @@ const totalMasuk = totalNyicil + totalDanusan + totalOtherIncome
   }
 
   async function saveEdit(id) {
+    if (!canEdit) return setFormError('Akun ini tidak memiliki izin mengubah data anggota.')
     const name = editName.trim()
     const target = Number(editTarget)
 
@@ -849,6 +932,7 @@ const totalMasuk = totalNyicil + totalDanusan + totalOtherIncome
   }
 
   async function toggleActive(member) {
+    if (!canEdit) return setFormError('Akun ini tidak memiliki izin mengubah data anggota.')
     const nextActive = member.active === false
 
     if (!nextActive) {
@@ -885,13 +969,14 @@ const totalMasuk = totalNyicil + totalDanusan + totalOtherIncome
 
   async function addPayment(e) {
     e.preventDefault()
+    if (!canEdit) return setFormError('Akun ini tidak memiliki izin mencatat transaksi.')
     const amount = Number(paymentAmount)
 
     if (!nyicilMember) return setFormError('Pilih anggota dulu.')
     if (!(amount > 0)) return setFormError('Nominal harus lebih dari 0.')
     if (!nyicilProof) return setFormError('Upload bukti pembayaran dulu.')
-    if (nyicilProof.size > 6 * 1024 * 1024) {
-      return setFormError('Ukuran file maksimal 6 MB.')
+    if (nyicilProof.size > MAX_PROOF_SIZE) {
+      return setFormError('Ukuran file maksimal 2 MB.')
     }
 
     setSaving(true)
@@ -947,14 +1032,15 @@ const totalMasuk = totalNyicil + totalDanusan + totalOtherIncome
 
   async function saveDanusan(e) {
     e.preventDefault()
+    if (!canEdit) return setFormError('Akun ini tidak memiliki izin mencatat transaksi.')
 
     if (!danusanMember) return setFormError('Pilih anggota dulu.')
     if (danusanResult.total === 0) {
       return setFormError('Isi jumlah minimal satu produk.')
     }
     if (!danusanProof) return setFormError('Upload bukti pembayaran dulu.')
-    if (danusanProof.size > 6 * 1024 * 1024) {
-      return setFormError('Ukuran file maksimal 6 MB.')
+    if (danusanProof.size > MAX_PROOF_SIZE) {
+      return setFormError('Ukuran file maksimal 2 MB.')
     }
 
     setSaving(true)
@@ -1009,6 +1095,10 @@ const totalMasuk = totalNyicil + totalDanusan + totalOtherIncome
   async function handleAiScan() {
     if (!expProof) {
       setAiScanError('Pilih file nota dulu sebelum membaca dengan AI.')
+      return
+    }
+    if (expProof.size > MAX_PROOF_SIZE) {
+      setAiScanError('Ukuran file nota maksimal 2 MB.')
       return
     }
 
@@ -1081,12 +1171,14 @@ const totalMasuk = totalNyicil + totalDanusan + totalOtherIncome
       return { ok: false, error: msg }
     }
 
+    if (!canEdit) return fail('Akun ini tidak memiliki izin mencatat pengeluaran.')
+
     if (!date) return fail('Pilih tanggal pengeluaran.')
     if (!description.trim()) return fail('Isi keterangan pengeluaran.')
     if (!(amount > 0)) return fail('Nominal harus lebih dari 0.')
     if (!proofFile) return fail('Upload nota atau bukti pengeluaran dulu.')
-    if (proofFile.size > 6 * 1024 * 1024) {
-      return fail('Ukuran file maksimal 6 MB.')
+    if (proofFile.size > MAX_PROOF_SIZE) {
+      return fail('Ukuran file maksimal 2 MB.')
     }
 
     setSaving(true)
@@ -1173,6 +1265,8 @@ function toggleCarwashMember(memberId) {
       return { ok: false, error: msg }
     }
 
+    if (!canEdit) return fail('Akun ini tidak memiliki izin mencatat pemasukan.')
+
     if (!date) return fail('Pilih tanggal pemasukan.')
 
     if (isCarwash) {
@@ -1190,8 +1284,8 @@ function toggleCarwashMember(memberId) {
       if (!(amount > 0)) return fail('Nominal harus lebih dari 0.')
     }
 
-    if (proofFile && proofFile.size > 6 * 1024 * 1024) {
-      return fail('Ukuran file maksimal 6 MB.')
+    if (proofFile && proofFile.size > MAX_PROOF_SIZE) {
+      return fail('Ukuran file maksimal 2 MB.')
     }
 
     setSaving(true)
@@ -1417,6 +1511,10 @@ const filteredAuditRows = auditRows.filter((row) => {
     setLoadErrorAt,
     saving,
     setSaving,
+    dataReports,
+    reportError,
+    reportBusy,
+    reportBusyId,
     newName,
     setNewName,
     newTarget,
@@ -1513,6 +1611,8 @@ const filteredAuditRows = auditRows.filter((row) => {
     setAiScanResult,
     canEdit,
     canApprove,
+    submitDataReport,
+    reviewDataReport,
     goTo,
     handleLogout,
     activeMembers,

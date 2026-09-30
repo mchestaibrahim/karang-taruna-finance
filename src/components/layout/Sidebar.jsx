@@ -5,7 +5,16 @@ import { ICONS } from '../../app/icons'
 
 export function Sidebar({ data, actions }) {
   const { page, session, role, pendingExpenses, canApprove } = data
-  const { goTo, handleLogout } = actions
+  const { goTo, handleLogout, openTutorial } = actions
+  const visibleGroups = role === 'member'
+    ? NAV_GROUPS.map((group) => ({
+        ...group,
+        items: group.items.filter((item) => ['dashboard', 'anggota', 'transaksi', 'laporan', 'data-reports'].includes(item.id)),
+      })).filter((group) => group.items.length > 0)
+    : role === 'pengurus'
+      ? NAV_GROUPS.map((group) => ({ ...group, items: group.items.filter((item) => item.id !== 'data-reports') }))
+        .filter((group) => group.items.length > 0)
+      : NAV_GROUPS
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const menuToggleRef = useRef(null)
 
@@ -79,7 +88,7 @@ export function Sidebar({ data, actions }) {
         </h2>
 
         <nav id="primary-navigation" aria-label="Navigasi utama">
-          {NAV_GROUPS.map((group) => (
+          {visibleGroups.map((group) => (
             <div className="nav-group" key={group.label}>
               <div className="nav-group-label">{group.label}</div>
               {group.items.map((p) => (
@@ -93,7 +102,7 @@ export function Sidebar({ data, actions }) {
                     closeMobileMenu()
                   }}
                 >
-                  <span className="nav-icon">{ICONS[p.id]}</span>
+                  <span className="nav-icon">{ICONS[p.id] || ICONS.laporan}</span>
                   <span className="nav-label">{p.label}</span>
                   {p.id === 'pengeluaran' && canApprove && pendingExpenses.length > 0 && (
                     <span className="nav-count">{pendingExpenses.length}</span>
@@ -109,6 +118,7 @@ export function Sidebar({ data, actions }) {
             {session.user.email}
           </div>
           <div className="sidebar-role">{ROLE_LABEL[role]}</div>
+          <button type="button" onClick={openTutorial}>Panduan</button>
           <button type="button" onClick={handleLogout}>
             Keluar
           </button>

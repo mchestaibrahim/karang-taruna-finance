@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { MIN_REJECT_REASON } from '../app/config'
+import { MAX_PROOF_SIZE, MIN_REJECT_REASON } from '../app/config'
 import { fileToDataUrl } from '../app/helpers'
 import { toExpense } from '../app/mappers'
 import { todayISO } from '../app/formatters'
@@ -29,6 +29,17 @@ export function useChatAssistant({
       ...list,
       { id: crypto.randomUUID(), role: 'system', text, time: Date.now() },
     ])
+  }
+
+  function selectChatImage(file) {
+    if (file && file.size > MAX_PROOF_SIZE) {
+      setChatImage(null)
+      setChatError('Ukuran foto maksimal 2 MB.')
+      return false
+    }
+    setChatImage(file)
+    setChatError('')
+    return true
   }
 
   // Uses the same review RPC as the reject dialog, keeping server rules consistent.
@@ -116,6 +127,10 @@ export function useChatAssistant({
     const text = chatInput.trim()
     if (!text && !chatImage) return
     if (chatBusy) return
+    if (chatImage && chatImage.size > MAX_PROOF_SIZE) {
+      setChatError('Ukuran foto maksimal 2 MB.')
+      return
+    }
 
     const userMsg = {
       id: crypto.randomUUID(),
@@ -200,7 +215,7 @@ export function useChatAssistant({
     chatInput,
     setChatInput,
     chatImage,
-    setChatImage,
+    setChatImage: selectChatImage,
     chatBusy,
     chatError,
     sendChatMessage,

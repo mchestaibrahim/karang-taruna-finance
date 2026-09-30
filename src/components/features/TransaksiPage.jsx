@@ -2,7 +2,7 @@ import { ApprovalBadge, Badge, Empty, VoidButton, VoidNote } from '../ui'
 import { rupiah } from '../../app/formatters'
 
 export function TransaksiPage({ data }) {
-  const { txSearch, setTxSearch, txMember, setTxMember, members, txType, setTxType, txStatus, setTxStatus, txSort, setTxSort, exportCsv, filteredTx, allTransactions, filteredMasuk, filteredKeluar, canEdit, askVoid } = data
+  const { txSearch, setTxSearch, txMember, setTxMember, members, txType, setTxType, txStatus, setTxStatus, txSort, setTxSort, exportCsv, filteredTx, allTransactions, filteredMasuk, filteredKeluar, canEdit, canReport, askVoid, onReport } = data
 
   return (
 <section className="box box-compact">
@@ -98,7 +98,7 @@ export function TransaksiPage({ data }) {
               <th>Jenis</th>
               <th>Detail</th>
               <th className="num">Nominal</th>
-              {canEdit && <th />}
+              {(canEdit || canReport) && <th />}
             </tr>
           </thead>
           <tbody>
@@ -125,10 +125,11 @@ export function TransaksiPage({ data }) {
                     <div className="sub">Bati {rupiah(t.profit)}</div>
                   )}
                 </td>
-                {canEdit && (
+                {(canEdit || canReport) && (
                   <td>
                     <div className="actions">
-                      <VoidButton canEdit={canEdit} item={t} kind={t.kind} label={`${t.type} ${t.name}, ${t.date}: ${rupiah(t.amount)}`} askVoid={askVoid} />
+                      {canEdit && <VoidButton canEdit={canEdit} item={t} kind={t.kind} label={`${t.type} ${t.name}, ${t.date}: ${rupiah(t.amount)}`} askVoid={askVoid} />}
+                      {canReport && <button type="button" className="btn btn-ghost btn-sm" aria-label={`Laporkan ${t.type} ${t.name}`} onClick={() => onReport({ table: t.kind === 'pengeluaran' ? 'expenses' : t.kind === 'pemasukan-lainnya' ? 'other_income' : 'transactions', id: t.id, label: `${t.type} · ${t.date} · ${t.name} · ${rupiah(t.amount)} · ${t.detail}` })}>Laporkan</button>}
                     </div>
                   </td>
                 )}

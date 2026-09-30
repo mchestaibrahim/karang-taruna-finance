@@ -1,5 +1,6 @@
 export const DEFAULT_TARGET = 200000
 export const PROOF_BUCKET = 'payment-proofs'
+export const MAX_PROOF_SIZE = 2 * 1024 * 1024
 export const MIN_VOID_REASON = 5
 export const MIN_REJECT_REASON = 5
 
@@ -25,6 +26,7 @@ export const EXPENSE_CATEGORIES = [
 export const ROLE_LABEL = {
   bendahara: 'Bendahara',
   pengurus: 'Pengurus (verifikator)',
+  member: 'Member',
 }
 
 export const NAV_GROUPS = [
@@ -49,6 +51,7 @@ export const NAV_GROUPS = [
     label: 'Laporan',
     items: [
       { id: 'laporan', label: 'Laporan Bulanan' },
+      { id: 'data-reports', label: 'Laporan Kesalahan' },
       { id: 'log', label: 'Log Aktivitas' },
     ],
   },
@@ -66,6 +69,7 @@ export const PAGE_INFO = {
   anggota: { title: 'Anggota', subtitle: 'Kelola anggota Karang Taruna' },
   transaksi: { title: 'Transaksi', subtitle: 'Semua uang masuk dan keluar' },
   laporan: { title: 'Laporan Bulanan', subtitle: 'Ringkasan per bulan, siap dicetak atau dibagikan' },
+  'data-reports': { title: 'Laporan Kesalahan', subtitle: 'Tinjau data yang dilaporkan anggota' },
   log: { title: 'Log Aktivitas', subtitle: 'Siapa mengubah apa, dan kapan' },
 }
 

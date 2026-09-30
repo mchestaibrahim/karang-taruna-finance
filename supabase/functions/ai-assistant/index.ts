@@ -13,6 +13,8 @@ import { serve } from 'https://deno.land/std@0.203.0/http/server.ts'
 
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')
 const MODEL = 'gemini-3.8-flash'
+const MAX_IMAGE_SIZE = 2 * 1024 * 1024
+const MAX_IMAGE_LENGTH = Math.ceil(MAX_IMAGE_SIZE / 3) * 4 + 100
 const APP_ORIGIN = Deno.env.get('APP_ORIGIN') || '*'
 
 const CORS_HEADERS = {
@@ -200,8 +202,8 @@ serve(async (req) => {
       })
     }
 
-    if (image != null && (typeof image !== 'string' || image.length > 8 * 1024 * 1024)) {
-      return new Response(JSON.stringify({ error: 'Gambar terlalu besar.' }), {
+    if (image != null && (typeof image !== 'string' || image.length > MAX_IMAGE_LENGTH)) {
+      return new Response(JSON.stringify({ error: 'Gambar maksimal 2 MB.' }), {
         status: 400,
         headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
       })

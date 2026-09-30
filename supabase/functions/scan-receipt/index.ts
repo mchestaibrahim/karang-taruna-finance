@@ -2,7 +2,8 @@ import { serve } from 'https://deno.land/std@0.203.0/http/server.ts'
 
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')
 const MODEL = 'gemini-3.8-flash'
-const MAX_IMAGE_LENGTH = 8 * 1024 * 1024
+const MAX_IMAGE_SIZE = 2 * 1024 * 1024
+const MAX_IMAGE_LENGTH = Math.ceil(MAX_IMAGE_SIZE / 3) * 4 + 100
 const APP_ORIGIN = Deno.env.get('APP_ORIGIN') || '*'
 
 const corsHeaders = {
@@ -35,7 +36,7 @@ serve(async (req) => {
     const match = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(image)
 
     if (!match || image.length > MAX_IMAGE_LENGTH) {
-      return jsonResponse({ error: 'File harus berupa gambar JPG, PNG, atau WebP dan berukuran maksimal 6 MB.' }, 400)
+      return jsonResponse({ error: 'File harus berupa gambar JPG, PNG, atau WebP dan berukuran maksimal 2 MB.' }, 400)
     }
 
     const response = await fetch(
