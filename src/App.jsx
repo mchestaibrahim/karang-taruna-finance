@@ -21,6 +21,7 @@ import { useFinanceController } from './hooks/useFinanceController'
 import { rupiah } from './app/formatters'
 import { DataReportDialog } from './components/DataReportDialog'
 import { GuideDialog } from './components/GuideDialog'
+import { VENDOR_CATEGORY } from './app/config'
 
 /* ---------- Aplikasi ---------- */
 
@@ -303,6 +304,11 @@ function App() {
       totalTarget={totalTarget}
       belumLunas={belumLunas}
       exportBackup={exportBackup}
+      canEdit={canEdit}
+      onRecordVendorPayment={() => {
+        setExpCategory(VENDOR_CATEGORY)
+        goTo('pengeluaran')
+      }}
     />}
         {page === 'danusan' && <DanusanPage data={{ canEdit, saveDanusan, danusanMember, setDanusanMember, activeMembers, danusanProof, setDanusanProof, danusanItems, updateItem, danusanResult, saving, formError, danusanTransactions, nameOfMember, openProof, askVoid }} />}
         {page === 'nyicil' && <NyicilPage data={{ canEdit, addPayment, nyicilMember, setNyicilMember, activeMembers, paymentAmount, setPaymentAmount, nyicilProof, setNyicilProof, saving, nyicilTarget, formError, payments, nameOfMember, openProof, askVoid }} />}

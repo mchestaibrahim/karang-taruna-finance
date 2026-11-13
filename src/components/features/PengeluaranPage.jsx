@@ -9,9 +9,14 @@ export function PengeluaranPage({ data }) {
 <>
       {canEdit && (
         <section className="box box-compact">
-          <h3>Catat Pengeluaran</h3>
+          <div className="section-head">
+            <div>
+              <h3>Catat Pengeluaran</h3>
+              <p className="hint">Catat biaya kegiatan atau setoran vendor beserta bukti pembayarannya.</p>
+            </div>
+          </div>
 
-          <form className="form-row" onSubmit={saveExpense} noValidate>
+          <form className="form-row expense-form" onSubmit={saveExpense} noValidate>
             <label className="field narrow">
               <span>Tanggal</span>
               <input
@@ -63,7 +68,7 @@ export function PengeluaranPage({ data }) {
 
             <ProofPicker label="Nota / Bukti" file={expProof} setFile={setExpProof} wide={false} />
 
-            <div className="form-row section-gap" style={{ width: '100%' }}>
+            <div className="expense-ai-action">
               <button
                 type="button"
                 className="btn btn-ai"
@@ -166,12 +171,14 @@ export function PengeluaranPage({ data }) {
             </button>
           </form>
 
-          <p className="hint">
-            Pengeluaran baru akan berstatus "Menunggu" sampai disetujui pengurus,
-            dan baru mengurangi saldo kas setelah disetujui. Pilih kategori "
-            {VENDOR_CATEGORY}" saat membayar vendor, supaya kewajiban vendor di
-            Dashboard berkurang otomatis setelah disetujui.
-          </p>
+          <div className={`expense-guidance${expCategory === VENDOR_CATEGORY ? ' is-vendor' : ''}`} role="note">
+            <strong>{expCategory === VENDOR_CATEGORY ? 'Mencatat setoran bagian vendor' : 'Tentang persetujuan pengeluaran'}</strong>
+            <p>
+              {expCategory === VENDOR_CATEGORY
+                ? <>Pilih kategori <b>{VENDOR_CATEGORY}</b>, lalu isi nominal yang benar-benar dibayarkan. Setelah disetujui, saldo “Vendor Belum Disetor” di Dashboard otomatis berkurang. Nilai kewajiban tidak perlu diisi manual.</>
+                : <>Pengeluaran baru berstatus “Menunggu” sampai disetujui pengurus, dan baru mengurangi saldo kas setelah disetujui. Untuk membayar bagian vendor Danusan, pilih kategori “{VENDOR_CATEGORY}”.</>}
+            </p>
+          </div>
 
           <FormError message={formError} />
         </section>
@@ -228,50 +235,52 @@ export function PengeluaranPage({ data }) {
         {expenses.length === 0 ? (
           <Empty>Belum ada pengeluaran.</Empty>
         ) : (
-          <table className="table wide">
-            <thead>
-              <tr>
-                <th>Tanggal</th>
-                <th>Kategori</th>
-                <th>Keterangan</th>
-                <th className="num">Nominal</th>
-                <th>Persetujuan</th>
-                <th>Nota</th>
-                {canEdit && <th />}
-              </tr>
-            </thead>
-            <tbody>
-              {[...expenses]
-                .sort((a, b) => b.sortTime - a.sortTime || b.id - a.id)
-                .map((x) => (
-                  <tr key={x.id} className={x.voided ? 'row-void' : ''}>
-                    <td>{x.date}</td>
-                    <td>
-                      <Badge tone="pengeluaran">{x.category}</Badge>
-                    </td>
-                    <td>
-                      {x.description}
-                      <VoidNote item={x} />
-                      {x.status === 'rejected' && x.rejectReason && (
-                        <div className="void-note">
-                          <Badge tone="rejected">Ditolak</Badge> {x.rejectReason}
-                        </div>
-                      )}
-                    </td>
-                    <td className="num neg">-{rupiah(x.amount)}</td>
-                    <td><ApprovalBadge status={x.status} /></td>
-                    <td><ProofButton value={x.proofUrl} openProof={openProof} /></td>
-                    {canEdit && (
+          <div className="table-wrap" role="region" aria-label="Riwayat Pengeluaran" tabIndex="0">
+            <table className="table wide">
+              <thead>
+                <tr>
+                  <th>Tanggal</th>
+                  <th>Kategori</th>
+                  <th>Keterangan</th>
+                  <th className="num">Nominal</th>
+                  <th>Persetujuan</th>
+                  <th>Nota</th>
+                  {canEdit && <th />}
+                </tr>
+              </thead>
+              <tbody>
+                {[...expenses]
+                  .sort((a, b) => b.sortTime - a.sortTime || b.id - a.id)
+                  .map((x) => (
+                    <tr key={x.id} className={x.voided ? 'row-void' : ''}>
+                      <td>{x.date}</td>
                       <td>
-                        <div className="actions">
-                          <VoidButton canEdit={canEdit} item={x} kind="pengeluaran" label={`Pengeluaran ${x.category}, ${x.date}: ${rupiah(x.amount)}`} askVoid={askVoid} />
-                        </div>
+                        <Badge tone="pengeluaran">{x.category}</Badge>
                       </td>
-                    )}
-                  </tr>
-                ))}
-            </tbody>
-          </table>
+                      <td>
+                        {x.description}
+                        <VoidNote item={x} />
+                        {x.status === 'rejected' && x.rejectReason && (
+                          <div className="void-note">
+                            <Badge tone="rejected">Ditolak</Badge> {x.rejectReason}
+                          </div>
+                        )}
+                      </td>
+                      <td className="num neg">-{rupiah(x.amount)}</td>
+                      <td><ApprovalBadge status={x.status} /></td>
+                      <td><ProofButton value={x.proofUrl} openProof={openProof} /></td>
+                      {canEdit && (
+                        <td>
+                          <div className="actions">
+                            <VoidButton canEdit={canEdit} item={x} kind="pengeluaran" label={`Pengeluaran ${x.category}, ${x.date}: ${rupiah(x.amount)}`} askVoid={askVoid} />
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
     </>

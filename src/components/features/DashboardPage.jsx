@@ -11,6 +11,17 @@ import {
 import { ApprovalBadge, Badge, Empty, Progress } from '../ui'
 import { rupiah } from '../../app/formatters'
 
+function compactRupiah(value) {
+  const amount = Number(value)
+  if (Math.abs(amount) >= 1_000_000) {
+    return `Rp${(amount / 1_000_000).toLocaleString('id-ID', { maximumFractionDigits: 1 })} jt`
+  }
+  if (Math.abs(amount) >= 1_000) {
+    return `Rp${Math.round(amount / 1_000).toLocaleString('id-ID')} rb`
+  }
+  return rupiah(amount)
+}
+
 export function DashboardPage({
   totalMasuk,
   totalKeluar,
@@ -34,21 +45,57 @@ export function DashboardPage({
   totalTarget,
   belumLunas,
   exportBackup,
+  canEdit,
+  onRecordVendorPayment,
 }) {
   return (
     <>
-      <section className="stat-row">
-        <div className="stat-item"><span className="stat-label">Total Pemasukan</span><div className="stat-value">{rupiah(totalMasuk)}</div></div>
-        <div className="stat-item"><span className="stat-label">Total Pengeluaran</span><div className="stat-value">{rupiah(totalKeluar)}</div><span className="stat-note">Yang sudah disetujui saja</span></div>
-        <div className="stat-item"><span className="stat-label">Saldo</span><div className="stat-value">{rupiah(saldoBersih)}</div><span className="stat-note">Bersih, setelah kewajiban vendor</span></div>
-        <div className="stat-item"><span className="stat-label">Menunggu Approval</span><div className="stat-value">{rupiah(totalPending)}</div><span className="stat-note">{pendingExpenses.length} pengeluaran</span></div>
+      <section className="stat-row dashboard-primary-stats" aria-label="Ringkasan keuangan utama">
+        <div className="stat-item stat-balance">
+          <span className="stat-label">Saldo Bersih</span>
+          <div className="stat-value">{rupiah(saldoBersih)}</div>
+          <span className="stat-note">Setelah kewajiban vendor</span>
+        </div>
+        <div className="stat-item">
+          <span className="stat-label">Total Pemasukan</span>
+          <div className="stat-value">{rupiah(totalMasuk)}</div>
+        </div>
+        <div className="stat-item">
+          <span className="stat-label">Total Pengeluaran</span>
+          <div className="stat-value">{rupiah(totalKeluar)}</div>
+          <span className="stat-note">Yang sudah disetujui</span>
+        </div>
+        <div className="stat-item">
+          <span className="stat-label">Menunggu Approval</span>
+          <div className="stat-value">{rupiah(totalPending)}</div>
+          <span className="stat-note">{pendingExpenses.length} pengeluaran</span>
+        </div>
       </section>
 
-      <section className="stat-row section-gap">
-        <div className="stat-item"><span className="stat-label">Bati Karang Taruna</span><div className="stat-value">{rupiah(totalBati)}</div></div>
-        <div className="stat-item"><span className="stat-label">Vendor Belum Disetor</span><div className="stat-value">{rupiah(vendorBelumDisetor)}</div><span className="stat-note">Sudah disetor {rupiah(setorVendor)}</span></div>
-        <div className="stat-item"><span className="stat-label">Anggota Lunas</span><div className="stat-value">{lunasCount} / {activeMembers.length}</div></div>
-        <div className="stat-item"><span className="stat-label">Saldo Kas (kotor)</span><div className="stat-value">{rupiah(saldoKas)}</div><span className="stat-note">Sebelum kewajiban vendor</span></div>
+      <section className="stat-row dashboard-secondary-stats" aria-label="Ringkasan keuangan lainnya">
+        <div className="stat-item">
+          <span className="stat-label">Bati Karang Taruna</span>
+          <div className="stat-value">{rupiah(totalBati)}</div>
+        </div>
+        <div className="stat-item">
+          <span className="stat-label">Vendor Belum Disetor</span>
+          <div className="stat-value">{rupiah(vendorBelumDisetor)}</div>
+          <span className="stat-note">Sudah disetor {rupiah(setorVendor)}</span>
+          {canEdit && vendorBelumDisetor > 0 && (
+            <button type="button" className="btn btn-ghost btn-sm dashboard-vendor-action" onClick={onRecordVendorPayment}>
+              Catat setoran
+            </button>
+          )}
+        </div>
+        <div className="stat-item">
+          <span className="stat-label">Anggota Lunas</span>
+          <div className="stat-value">{lunasCount} / {activeMembers.length}</div>
+        </div>
+        <div className="stat-item">
+          <span className="stat-label">Saldo Kas (kotor)</span>
+          <div className="stat-value">{rupiah(saldoKas)}</div>
+          <span className="stat-note">Sebelum kewajiban vendor</span>
+        </div>
       </section>
 
       <section className="box chart-box">
@@ -59,25 +106,53 @@ export function DashboardPage({
               <BarChart data={chartData}>
                 <CartesianGrid stroke="#e8edf4" strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="tanggal" axisLine={false} tickLine={false} tick={{ fill: '#64708a', fontSize: 12 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64708a', fontSize: 12 }} />
+                <YAxis axisLine={false} tickLine={false} tickFormatter={compactRupiah} tick={{ fill: '#64708a', fontSize: 12 }} />
                 <Tooltip
                   formatter={(value) => rupiah(value)}
                   contentStyle={{ border: '1px solid #e4e8ef', borderRadius: 8, boxShadow: '0 6px 18px rgba(23, 32, 51, 0.12)' }}
                 />
                 <Legend wrapperStyle={{ color: '#64708a', fontSize: 12 }} />
-                <Bar dataKey="masuk" name="Uang Masuk" fill="#2563eb" radius={[4, 4, 0, 0]} animationDuration={700} />
-                <Bar dataKey="bati" name="Bati KT" fill="#12a594" radius={[4, 4, 0, 0]} animationDuration={700} />
-                <Bar dataKey="keluar" name="Pengeluaran" fill="#e5484d" radius={[4, 4, 0, 0]} animationDuration={700} />
+                <Bar dataKey="masuk" name="Uang Masuk" fill="#315edb" radius={[5, 5, 0, 0]} animationDuration={700} />
+                <Bar dataKey="bati" name="Bati KT" fill="#18a891" radius={[5, 5, 0, 0]} animationDuration={700} />
+                <Bar dataKey="keluar" name="Pengeluaran" fill="#ed8b47" radius={[5, 5, 0, 0]} animationDuration={700} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         )}
       </section>
 
-      {((canApprove && pendingExpenses.length > 0) || dashboardCategoryBreakdown.length > 0) && (
-        <section className="content section-gap">
-          {canApprove && pendingExpenses.length > 0 ? <div className="box"><h3>Approval Menunggu Tindakan</h3>{pendingExpenses.slice(0, 4).map((expense) => <div className="list-row" key={expense.id}><div><strong>{expense.category}</strong><div className="sub">{expense.date}, {expense.description}</div></div><div className="list-end"><strong>{rupiah(expense.amount)}</strong><div className="actions"><button type="button" className="btn btn-primary btn-sm" disabled={approveBusyId === expense.id} onClick={() => approveExpense(expense)}>Setujui</button><button type="button" className="btn btn-danger btn-sm" onClick={() => askReject(expense)}>Tolak</button></div></div></div>)}{pendingExpenses.length > 4 && <p className="hint">dan {pendingExpenses.length - 4} lainnya di halaman Pengeluaran.</p>}</div> : <div className="box"><h3>Approval</h3><Empty>Tidak ada pengeluaran menunggu persetujuan.</Empty></div>}
-          <div className="box"><h3>Kategori Pengeluaran Bulan Ini</h3>{dashboardCategoryBreakdown.length === 0 ? <Empty>Belum ada pengeluaran disetujui bulan ini.</Empty> : dashboardCategoryBreakdown.map(([category, amount]) => <div className="list-row" key={category}><span>{category}</span><strong>{rupiah(amount)}</strong></div>)}</div>
+      {(canApprove && pendingExpenses.length > 0) && (
+        <section className="content section-gap dashboard-insights">
+          <div className="box">
+            <h3>Approval Menunggu Tindakan</h3>
+            {pendingExpenses.slice(0, 4).map((expense) => (
+              <div className="list-row" key={expense.id}>
+                <div>
+                  <strong>{expense.category}</strong>
+                  <div className="sub">{expense.date}, {expense.description}</div>
+                </div>
+                <div className="list-end">
+                  <strong>{rupiah(expense.amount)}</strong>
+                  <div className="actions">
+                    <button type="button" className="btn btn-primary btn-sm" disabled={approveBusyId === expense.id} onClick={() => approveExpense(expense)}>Setujui</button>
+                    <button type="button" className="btn btn-danger btn-sm" onClick={() => askReject(expense)}>Tolak</button>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {pendingExpenses.length > 4 && <p className="hint">dan {pendingExpenses.length - 4} lainnya di halaman Pengeluaran.</p>}
+          </div>
+        </section>
+      )}
+      {dashboardCategoryBreakdown.length > 0 && (
+        <section className="box box-compact section-gap dashboard-category">
+          <h3>Kategori Pengeluaran Bulan Ini</h3>
+          {dashboardCategoryBreakdown.map(([category, amount]) => (
+            <div className="list-row" key={category}>
+              <span>{category}</span>
+              <strong>{rupiah(amount)}</strong>
+            </div>
+          ))}
         </section>
       )}
 
